@@ -1,0 +1,15 @@
+#!/bin/sh
+
+commit_msg_file="$1"
+msg=$(head -n1 "$commit_msg_file" | tr -d '\r')
+
+echo "🔍 Checking commit message: $msg"
+
+if ! echo "$msg" | grep -qE '^(feat|fix|art|layout|refactor|docs):\ '; then
+  echo "❌ Commit message must start with one of: feat:, fix:, art:, layout:, refactor:, docs:"
+  echo "💡 Example: art: added fire texture for goblin"
+  exit 1
+fi
+
+echo "✅ Commit message passed checks!"
+exit 0
