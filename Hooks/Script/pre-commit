@@ -1,0 +1,129 @@
+#!/bin/sh
+# Pre-commit hook untuk workflow GitHub Desktop
+
+DEBUG=1  # set to 1 to enable debug logs!
+
+branch=$(git rev-parse --abbrev-ref HEAD)
+role=$(echo "$branch" | cut -d'/' -f1)
+
+# Jika berada di branch develop, lewati semua pengecekan
+if [ "$branch" = "develop" ]; then
+  echo "ℹ️ Pada branch 'develop' – semua commit diperbolehkan (tanpa pengecekan)."
+  exit 0
+fi
+
+# Jika berada di branch main, blok semua commit
+if [ "$branch" = "main" ]; then
+  echo "❌ Commit langsung ke branch 'main' tidak diperbolehkan!"
+  echo "💡 Silakan buat pull request dari branch yang sesuai ke main."
+  exit 1
+fi
+
+# Hanya izinkan commit pada branch sesuai role
+if ! echo "$branch" | grep -qE '^(code|art|layout|anim)/.+$'; then
+  echo "❌ Commit hanya diperbolehkan pada: main, develop, atau code|art|layout|anim/* branches."
+  echo "🔒 Branch saat ini: '$branch' tidak diperbolehkan untuk commit langsung."
+  echo "💡 Silakan buat branch yang sesuai atau pindah ke develop."
+  exit 1
+fi
+
+staged_files=$(git diff --cached --name-only)
+
+block_commit() {
+  echo "❌ $1"
+  echo "Blocked: $2"
+  exit 1
+}
+
+[ -z "$staged_files" ] && exit 0
+
+# Friendly role label untuk log
+case "$role" in
+  code)
+    role_label="programmer"
+    ;;
+  art)
+    role_label="artist"
+    ;;
+  layout)
+    role_label="layouter"
+    ;;
+  anim)
+    role_label="animator"
+    ;;
+  *)
+    role_label="$role"
+    ;;
+esac
+
+echo "🔍 Memeriksa staged files untuk role '$role_label'..."
+
+# Path untuk folder yang menyimpan file allowed_paths
+allowed_paths_file="Hooks/AllowedPath/.allowed_paths_$role"
+
+# DEBUG: Current working dir and allowed paths file contents
+if [ "$DEBUG" -eq 1 ] && [ -f "$allowed_paths_file" ]; then
+  echo "🔍 DEBUG: Current directory: $(pwd)"
+  echo "🔍 DEBUG: Contents of '$allowed_paths_file':"
+  cat "$allowed_paths_file"
+  echo
+fi
+
+for file in $staged_files; do
+  allowed=0
+
+  case "$role" in
+    code)
+      if echo "$file" | grep -qE '\.(cpp|h)$'; then
+        continue
+      fi
+      ;;
+    art)
+      if ! echo "$file" | grep -qE '\.(uasset|fbx|png|jpg|tga)$'; then
+        block_commit "Artist hanya boleh commit file art-related (.uasset, .fbx, .png, .jpg, .tga)." "$file"
+      fi
+      ;;
+    layout)
+      if ! echo "$file" | grep -qE '\.(uasset|umap)$'; then
+        block_commit "Layouter hanya boleh commit file map related (.uasset dan .umap)." "$file"
+      fi
+      ;;
+    anim)
+      if ! echo "$file" | grep -qE '\.(uasset|fbx|anim|png|jpg)$'; then
+        block_commit "Animator hanya boleh commit file animasi dan resources (.uasset, .fbx, .anim, .png, .jpg)." "$file"
+      fi
+      ;;
+  esac
+
+  # DEBUG: Show each pattern comparison
+  if [ -f "$allowed_paths_file" ]; then
+    while read -r pattern; do
+      [ -z "$pattern" ] && continue
+      [ "$DEBUG" -eq 1 ] && echo "🔍 DEBUG: pattern='$pattern' | file='$file'"
+      if echo "$file" | grep -q "^$pattern"; then
+        allowed=1
+        break
+      fi
+    done < "$allowed_paths_file"
+  fi
+
+  if [ $allowed -eq 0 ]; then
+    case "$role" in
+      code)
+        block_commit "Programmer hanya boleh commit file non-.cpp/.h di folder yang tercantum di '$allowed_paths_file'." "$file"
+        ;;
+      art)
+        block_commit "Artist hanya boleh commit file di folder yang tercantum di '$allowed_paths_file'." "$file"
+        ;;
+      layout)
+        block_commit "Layouter hanya boleh commit file .uasset/.umap di folder yang tercantum di '$allowed_paths_file'." "$file"
+        ;;
+      anim)
+        block_commit "Animator hanya boleh commit file di folder yang tercantum di '$allowed_paths_file'." "$file"
+        ;;
+    esac
+  fi
+done
+
+echo "✅ Semua staged files lolos pengecekan."
+exit 0
