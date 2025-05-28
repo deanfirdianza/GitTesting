@@ -1,10 +1,10 @@
 #!/bin/sh
 # Pre-commit hook untuk workflow GitHub Desktop
 
-DEBUG=0  # set to 0 to turn off debug logs!
+DEBUG=0  # set to 1 to enable debug logs!
 
 branch=$(git rev-parse --abbrev-ref HEAD)
-role=$(echo "$branch" | cut -d'/' -f2)
+role=$(echo "$branch" | cut -d'/' -f1)
 
 # Jika berada di branch develop, lewati semua pengecekan
 if [ "$branch" = "develop" ]; then
@@ -15,15 +15,15 @@ fi
 # Jika berada di branch main, blok semua commit
 if [ "$branch" = "main" ]; then
   echo "❌ Commit langsung ke branch 'main' tidak diperbolehkan!"
-  echo "💡 Silakan buat pull request dari feature branch ke main."
+  echo "💡 Silakan buat pull request dari branch yang sesuai ke main."
   exit 1
 fi
 
-# Hanya izinkan commit pada feature branches
-if ! echo "$branch" | grep -qE '^(feature/(code|art|layout)/.+)$'; then
-  echo "❌ Commit hanya diperbolehkan pada: main, develop, atau feature/code|art|layout/* branches."
+# Hanya izinkan commit pada branch sesuai role
+if ! echo "$branch" | grep -qE '^(code|art|layout|anim)/.+$'; then
+  echo "❌ Commit hanya diperbolehkan pada: main, develop, atau code|art|layout|anim/* branches."
   echo "🔒 Branch saat ini: '$branch' tidak diperbolehkan untuk commit langsung."
-  echo "💡 Silakan buat feature branch yang sesuai atau pindah ke develop."
+  echo "💡 Silakan buat branch yang sesuai atau pindah ke develop."
   exit 1
 fi
 
@@ -47,6 +47,9 @@ case "$role" in
     ;;
   layout)
     role_label="layouter"
+    ;;
+  anim)
+    role_label="animator"
     ;;
   *)
     role_label="$role"
@@ -81,8 +84,13 @@ for file in $staged_files; do
       fi
       ;;
     layout)
-      if ! echo "$file" | grep -qE '\.(uasset|umap)'; then
-        block_commit "Layouter hanya boleh commit file map related (.uasset dan .umap)" "$file"
+      if ! echo "$file" | grep -qE '\.(uasset|umap)$'; then
+        block_commit "Layouter hanya boleh commit file map related (.uasset dan .umap)." "$file"
+      fi
+      ;;
+    anim)
+      if ! echo "$file" | grep -qE '\.(uasset|fbx|anim|png|jpg)$'; then
+        block_commit "Animator hanya boleh commit file animasi dan resources (.uasset, .fbx, .anim, .png, .jpg)." "$file"
       fi
       ;;
   esac
@@ -110,9 +118,12 @@ for file in $staged_files; do
       layout)
         block_commit "Layouter hanya boleh commit file .uasset/.umap di folder yang tercantum di '$allowed_paths_file'." "$file"
         ;;
+      anim)
+        block_commit "Animator hanya boleh commit file di folder yang tercantum di '$allowed_paths_file'." "$file"
+        ;;
     esac
   fi
 done
 
-echo "✅ Semua staged files dan commit message lolos pengecekan."
+echo "✅ Semua staged files lolos pengecekan."
 exit 0

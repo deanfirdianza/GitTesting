@@ -5,9 +5,9 @@ msg=$(head -n1 "$commit_msg_file" | tr -d '\r')
 
 echo "🔍 Checking commit message: $msg"
 
-if ! echo "$msg" | grep -qE '^(feat|fix|art|layout|refactor|docs):\ '; then
-  echo "❌ Commit message must start with one of: feat:, fix:, art:, layout:, refactor:, docs:"
-  echo "💡 Example: art: added fire texture for goblin"
+if ! echo "$msg" | grep -qE '^(feat|fix|update|layout|anim|assets|others):\ '; then
+  echo "❌ Commit message must start with one of: feat:, fix:, update:, layout:, anim:, assets:, others:"
+  echo "💡 Example: feat: add new player combat system"
   exit 1
 fi
 
