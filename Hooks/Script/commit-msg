@@ -5,9 +5,11 @@ msg=$(head -n1 "$commit_msg_file" | tr -d '\r')
 
 echo "🔍 Checking commit message: $msg"
 
-if ! echo "$msg" | grep -qE '^(feat|fix|update|layout|anim|assets|others):\ '; then
-  echo "❌ Commit message must start with one of: feat:, fix:, update:, layout:, anim:, assets:, others:"
+# Allow our custom prefixes or "Merge branch ..."
+if ! echo "$msg" | grep -qE '^(feat|fix|update|layout|anim|assets|others):\ |^Merge branch '; then
+  echo "❌ Commit message must start with one of: feat:, fix:, update:, layout:, anim:, assets:, others: or be a merge commit"
   echo "💡 Example: feat: add new player combat system"
+  echo "💡 Example: Merge branch 'feature-branch' into develop"
   exit 1
 fi
 
